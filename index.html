@@ -7,49 +7,69 @@
   <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    };
+  </script>
+  <style>
+    body.dark {
+      background-color: #1a202c;
+      color: #a0aec0;
+    }
+    .dark-mode {
+      background-color: #1a202c;
+      color: #a0aec0;
+    }
+    .dark-mode table {
+      background-color: #2d3748;
+      color: #cbd5e0;
+    }
+    .dark-mode th, .dark-mode td {
+      border-color: #4a5568;
+    }
+  </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-gray-900 min-h-screen dark">
   <div id="app" class="p-8">
     <div class="max-w-7xl mx-auto space-y-6">
       <!-- Header -->
       <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-800">CSV File Manager</h1>
-        <div>
-          <label for="csvFileInput" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition cursor-pointer">
-            Import CSV
-          </label>
-          <input id="csvFileInput" type="file" class="hidden" accept=".csv" @change="handleFileUpload">
+        <h1 class="text-3xl font-bold text-gray-100">CSV File Manager</h1>
+        <div class="flex items-center space-x-4">
+          <div>
+            <label for="csvFileInput" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition cursor-pointer">
+              Import CSV
+            </label>
+            <input id="csvFileInput" type="file" class="hidden" accept=".csv" @change="handleFileUpload">
+          </div>
         </div>
       </div>
 
       <!-- Table and Controls -->
-      <div class="bg-white shadow rounded-lg p-6 space-y-4">
-        <!-- Filter Controls -->
-        <div class="flex justify-between items-center">
-          <div class="space-x-4">
-            <label for="columnFilter" class="font-medium text-gray-700">Filter Columns:</label>
-            <select
-              id="columnFilter"
-              multiple
-              class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-              v-model="selectedColumns"
-            >
-              <option v-for="column in columns" :key="column.key" :value="column.key">
-                {{ column.label }}
-              </option>
-            </select>
+      <div class="bg-gray-800 shadow rounded-lg p-6 space-y-4">
+        <!-- Filter Controls Embedded in Result Box -->
+        <div class="flex items-center justify-between border-b pb-4 mb-4 border-gray-600">
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">Filter Columns</label>
+            <div class="flex flex-wrap gap-2">
+              <div v-for="column in columns" :key="column.key" class="flex items-center space-x-2">
+                <input type="checkbox" :id="column.key" v-model="selectedColumns" :value="column.key" class="rounded border-gray-600 bg-gray-700">
+                <label :for="column.key" class="text-sm text-gray-300">{{ column.label }}</label>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Table -->
         <div class="overflow-x-auto">
-          <table class="min-w-full bg-gray-50 border border-gray-200 rounded-lg shadow">
-            <thead class="bg-gray-200">
+          <table class="min-w-full bg-gray-700 border border-gray-600 rounded-lg shadow">
+            <thead class="bg-gray-600">
               <tr>
                 <th
                   v-for="column in visibleColumns"
                   :key="column.key"
-                  class="px-6 py-3 text-left text-sm font-medium text-gray-900 cursor-pointer"
+                  class="px-6 py-3 text-left text-sm font-medium text-gray-200 cursor-pointer"
                   @click="sortColumn(column.key)"
                 >
                   {{ column.label }}
@@ -64,8 +84,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(row, rowIndex) in sortedData" :key="rowIndex" class="even:bg-gray-100">
-                <td v-for="column in visibleColumns" :key="column.key" class="px-6 py-3 text-sm text-gray-700">
+              <tr v-for="(row, rowIndex) in sortedData" :key="rowIndex" class="even:bg-gray-800">
+                <td v-for="column in visibleColumns" :key="column.key" class="px-6 py-3 text-sm text-gray-300">
                   {{ row[column.key] }}
                 </td>
               </tr>
@@ -108,11 +128,19 @@
         handleFileUpload(event) {
           const file = event.target.files[0];
           if (!file) return;
-          Papa.parse(file, {
+
+          // Use streaming parsing to reduce memory usage
+          const chunkSize = 1024 * 50; // 50KB chunks
+          const parsedData = [];
+          const parser = Papa.parse(file, {
             header: true,
-            complete: (results) => {
-              this.data = results.data;
-              this.columns = Object.keys(results.data[0] || {}).map(key => ({
+            chunkSize,
+            chunk: (results) => {
+              parsedData.push(...results.data);
+            },
+            complete: () => {
+              this.data = parsedData;
+              this.columns = Object.keys(parsedData[0] || {}).map(key => ({
                 key,
                 label: key.charAt(0).toUpperCase() + key.slice(1),
               }));
@@ -128,6 +156,9 @@
             this.sortOrder = 'asc';
           }
         },
+      },
+      mounted() {
+        document.body.classList.add('dark'); // Default to dark mode
       },
     });
 
