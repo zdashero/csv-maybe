@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV File Manager</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="app" class="p-8">
+    <div class="max-w-7xl mx-auto space-y-6">
+      <!-- Header -->
+      <div class="flex justify-between items-center">
+        <h1 class="text-3xl font-bold text-gray-800">CSV File Manager</h1>
+        <div>
+          <label for="csvFileInput" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition cursor-pointer">
+            Import CSV
+          </label>
+          <input id="csvFileInput" type="file" class="hidden" accept=".csv" @change="handleFileUpload">
+        </div>
+      </div>
+
+      <!-- Table and Controls -->
+      <div class="bg-white shadow rounded-lg p-6 space-y-4">
+        <!-- Filter Controls -->
+        <div class="flex justify-between items-center">
+          <div class="space-x-4">
+            <label for="columnFilter" class="font-medium text-gray-700">Filter Columns:</label>
+            <select
+              id="columnFilter"
+              multiple
+              class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+              v-model="selectedColumns"
+            >
+              <option v-for="column in columns" :key="column.key" :value="column.key">
+                {{ column.label }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full bg-gray-50 border border-gray-200 rounded-lg shadow">
+            <thead class="bg-gray-200">
+              <tr>
+                <th
+                  v-for="column in visibleColumns"
+                  :key="column.key"
+                  class="px-6 py-3 text-left text-sm font-medium text-gray-900 cursor-pointer"
+                  @click="sortColumn(column.key)"
+                >
+                  {{ column.label }}
+                  <span
+                    v-if="sortKey === column.key"
+                    class="ml-2 inline-block"
+                    :class="sortOrder === 'asc' ? 'rotate-0' : 'rotate-180'"
+                  >
+                    &#x25B2;
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, rowIndex) in sortedData" :key="rowIndex" class="even:bg-gray-100">
+                <td v-for="column in visibleColumns" :key="column.key" class="px-6 py-3 text-sm text-gray-700">
+                  {{ row[column.key] }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const app = Vue.createApp({
+      data() {
+        return {
+          data: [],
+          columns: [],
+          selectedColumns: [],
+          sortKey: '',
+          sortOrder: 'asc',
+        };
+      },
+      computed: {
+        visibleColumns() {
+          return this.columns.filter(column => this.selectedColumns.includes(column.key));
+        },
+        sortedData() {
+          if (!this.sortKey) return this.data;
+          return [...this.data].sort((a, b) => {
+            const aValue = a[this.sortKey] || '';
+            const bValue = b[this.sortKey] || '';
+            if (this.sortOrder === 'asc') {
+              return aValue.localeCompare(bValue);
+            } else {
+              return bValue.localeCompare(aValue);
+            }
+          });
+        },
+      },
+      methods: {
+        handleFileUpload(event) {
+          const file = event.target.files[0];
+          if (!file) return;
+          Papa.parse(file, {
+            header: true,
+            complete: (results) => {
+              this.data = results.data;
+              this.columns = Object.keys(results.data[0] || {}).map(key => ({
+                key,
+                label: key.charAt(0).toUpperCase() + key.slice(1),
+              }));
+              this.selectedColumns = this.columns.map(column => column.key);
+            },
+          });
+        },
+        sortColumn(key) {
+          if (this.sortKey === key) {
+            this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+          } else {
+            this.sortKey = key;
+            this.sortOrder = 'asc';
+          }
+        },
+      },
+    });
+
+    app.mount('#app');
+  </script>
+</body>
+</html>
